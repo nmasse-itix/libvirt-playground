@@ -1,0 +1,53 @@
+variant: fcos
+version: 1.4.0
+passwd:
+  users:
+    - name: nicolas
+      groups:
+        - wheel
+        - sudo
+      ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPR1tt58X0+vbvsCR12gMAqr+g7vjt1Fx/qqz9EiboIs nicolas@localhost.localdomain
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFW62WJXI1ZCMfNA4w0dMpL0fsldhbEfULNGIUB0nQui nmasse@localhost.localdomain
+      # echo nicolas | mkpasswd --method=yescrypt -s
+      password_hash: "$y$j9T$IIkhmtKaucCqDD1gF//fm1$ZyKCnWN8i2eRFZke.O0eSvjxEqnQEmfTFQgi7.a/Ce0"
+systemd:
+  units:
+  - name: unifi.service
+    enabled: true
+    contents: |
+      [Unit]
+      Description=Unifi Controller
+      Documentation=https://docs.linuxserver.io/images/docker-unifi-controller
+      Wants=network-online.target
+      After=network-online.target
+      RequiresMountsFor=%t/containers
+
+      [Service]
+      Environment=PODMAN_SYSTEMD_UNIT=%n
+      Restart=always
+      TimeoutStopSec=61
+      ExecStartPre=/bin/rm -f %t/%n.ctr-id
+      ExecStartPre=/bin/install -d /var/lib/unifi -m 0700 -o 10000 -g 10000
+      ExecStart=/usr/bin/podman run --cidfile=%t/%n.ctr-id --cgroups=no-conmon --rm --sdnotify=conmon -d --replace --name unifi -e PUID=10000 -e PGID=10000 -v /var/lib/unifi:/config:z -p 3478:3478/udp -p 10001:10001/udp -p 8080:8080 -p 8443:8443 -p 1900:1900/udp -p 8843:8843 -p 8880:8880 -p 6789:6789 -p 5514:5514/udp quay.io/linuxserver.io/unifi-controller:6.5.55
+      ExecStop=/usr/bin/podman stop --ignore --cidfile=%t/%n.ctr-id
+      ExecStopPost=/usr/bin/podman rm -f --ignore --cidfile=%t/%n.ctr-id
+      Type=notify
+      NotifyAccess=all
+
+      [Install]
+      WantedBy=multi-user.target default.target
+
+storage:
+  disks:
+  - device: /dev/vdb
+    wipe_table: false
+    partitions:
+    - size_mib: 0
+      start_mib: 0
+      label: var
+  filesystems:
+    - path: /var/lib/unifi
+      device: /dev/disk/by-partlabel/var
+      format: xfs
+      with_mount_unit: true

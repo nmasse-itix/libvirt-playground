@@ -1,0 +1,27 @@
+#cloud-config
+
+resize_rootfs: true
+
+users:
+- name: nicolas
+  gecos: Nicolas MASSE
+  groups: wheel
+  lock_passwd: false
+  # Password = "nicolas". Generated with "openssl passwd -6".
+  passwd: $6$lEBwC1lnRvLErO9A$lsb2i.3eTHj3PKV7uKryLROFOQMPDK/eKZXaLIoIk933JimDOPjCxn3F4gIu5ao9oQ4NFid7kQj/wUYJeVqoe.
+  ssh_authorized_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPR1tt58X0+vbvsCR12gMAqr+g7vjt1Fx/qqz9EiboIs nicolas@localhost.localdomain
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFW62WJXI1ZCMfNA4w0dMpL0fsldhbEfULNGIUB0nQui nmasse@localhost.localdomain
+
+packages:
+- podman
+
+runcmd:
+# Enable KVM virsh console access
+- [ "systemctl", "enable", "serial-getty@ttyS0.service" ]
+- [ "systemctl", "start", "--no-block", "serial-getty@ttyS0.service" ]
+# Disable SSH password authentication
+- [ "sed", "-i.post-install", "-e", "s/PasswordAuthentication yes/PasswordAuthentication no/", "/etc/ssh/sshd_config" ]
+- [ "systemctl", "restart", "--no-block", "sshd" ]
+# Enable sudo without password
+- [ "sed", "-i.post-install", "-e", "s/^%wheel\tALL=(ALL)\tALL/%wheel  ALL=(ALL)       NOPASSWD: ALL/", "/etc/sudoers" ]
